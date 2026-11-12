@@ -23,7 +23,9 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - uses: android-actions/setup-android@v3
+      # Android-SDK ist auf ubuntu-latest vorinstalliert (ANDROID_HOME)
+      - name: Android-SDK prüfen
+        run: echo "ANDROID_HOME=$ANDROID_HOME" && ls "$ANDROID_HOME"
 
       - name: Abhängigkeiten installieren
         run: npm ci
