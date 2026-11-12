@@ -1,0 +1,6 @@
+{
+  "appId": "com.dogfluence.pinocoach",
+  "appName": "Pino-Coach",
+  "webDir": "www",
+  "android": { "backgroundColor": "#f3f1ec" }
+}

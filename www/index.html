@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f3f1ec">
+<title>Pino-Coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: eine Spalte, mobile-first. Oben Aufnahme, darunter Auswertung, Coaching, Einstellungen. */
+  --bg:#f3f1ec;
+  --surface:#ffffff;
+  --ink:#1c2733;
+  --muted:#5f6b76;
+  --line:#dfdcd4;
+  --accent:#d9541e;       /* Leinen-Orange */
+  --accent-ink:#ffffff;
+  --accent-soft:#fbe6dc;
+  --good:#2f7d4f; --good-soft:#e1f1e7;
+  --warn:#a86a00; --warn-soft:#f8edd6;
+  --bad:#b3362c;  --bad-soft:#f8e1de;
+  --font-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body:"Figtree", "Segoe UI", system-ui, sans-serif;
+  --r:14px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141a20; --surface:#1d252d; --ink:#eef1f3; --muted:#9aa7b2; --line:#2e3943;
+    --accent:#f0743d; --accent-ink:#1a1209; --accent-soft:#3a2418;
+    --good:#6cc591; --good-soft:#1c3326; --warn:#e6b450; --warn-soft:#3a2f17; --bad:#f08a80; --bad-soft:#3d2120;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141a20; --surface:#1d252d; --ink:#eef1f3; --muted:#9aa7b2; --line:#2e3943;
+  --accent:#f0743d; --accent-ink:#1a1209; --accent-soft:#3a2418;
+  --good:#6cc591; --good-soft:#1c3326; --warn:#e6b450; --warn-soft:#3a2f17; --bad:#f08a80; --bad-soft:#3d2120;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+main{max-width:640px;margin:0 auto;padding:20px 16px 64px;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:30px;font-weight:800;letter-spacing:-.01em}
+h2{font-size:21px;font-weight:700}
+h3{font-size:17px;font-weight:700}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-direction:column;gap:6px}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
+button{font:inherit;cursor:pointer;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 16px;font-weight:600}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+/* Aufnahme */
+.rec{display:flex;align-items:center;gap:18px}
+.recbtn{width:92px;height:92px;flex:none;border-radius:50%;background:var(--accent);border:none;color:var(--accent-ink);display:grid;place-items:center;font-family:var(--font-display);font-weight:800;font-size:15px;line-height:1.1;text-align:center;padding:0}
+.recbtn.live{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--accent-soft)}50%{box-shadow:0 0 0 14px var(--accent-soft)}}
+@media (prefers-reduced-motion: reduce){.recbtn.live{animation:none;box-shadow:0 0 0 6px var(--accent-soft)}}
+.status{display:flex;flex-direction:column;gap:4px;min-width:0}
+.status strong{font-size:17px}
+.partial{font-style:italic;color:var(--muted);min-height:24px;overflow-wrap:anywhere}
+.typein{display:flex;gap:8px}
+.typein input{flex:1;min-width:0;font:inherit;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+/* Reaktion */
+.react{border:2px solid var(--accent);background:var(--accent-soft)}
+.react .row button{flex:1;padding:14px;font-size:17px}
+.yes{background:var(--good);border-color:var(--good);color:#fff}
+.no{background:var(--bad);border-color:var(--bad);color:#fff}
+/* Score + Kennzahlen */
+.score{display:flex;align-items:center;gap:18px}
+.ring{width:96px;height:96px;flex:none;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font-display);font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stat{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:2px;border-left-width:5px}
+.stat .v{font-family:var(--font-display);font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .l{font-size:13px;color:var(--muted);line-height:1.3}
+.s-good{border-left-color:var(--good)} .s-warn{border-left-color:var(--warn)} .s-bad{border-left-color:var(--bad)} .s-neutral{border-left-color:var(--line)}
+/* Vorschläge */
+.tips{display:flex;flex-direction:column;gap:12px;margin:0;padding:0;list-style:none}
+.tip{border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--bg)}
+.tip.focus{background:var(--accent-soft);border:1px solid var(--accent)}
+.pill{align-self:flex-start;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px}
+.p-bad{background:var(--bad-soft);color:var(--bad)} .p-warn{background:var(--warn-soft);color:var(--warn)} .p-good{background:var(--good-soft);color:var(--good)} .p-focus{background:var(--accent);color:var(--accent-ink)}
+.tip .ex{font-size:15px}
+.tip .ex b{font-weight:700}
+/* Protokoll */
+.log{display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto;margin:0;padding:0;list-style:none}
+.log li{display:flex;gap:10px;align-items:baseline;font-size:15px;border-bottom:1px solid var(--line);padding-bottom:8px}
+.log time{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px;flex:none;width:44px}
+.log .txt{flex:1;min-width:0;overflow-wrap:anywhere}
+.chip{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;margin-left:4px;white-space:nowrap}
+.c-name{background:var(--line);color:var(--ink)} .c-cmd{background:var(--accent-soft);color:var(--accent)} .c-rep{background:var(--bad-soft);color:var(--bad)} .c-praise{background:var(--good-soft);color:var(--good)} .c-scold{background:var(--warn-soft);color:var(--warn)} .c-syn{background:var(--warn-soft);color:var(--warn)}
+mark{background:var(--accent-soft);color:inherit;border-radius:4px;padding:0 2px}
+/* Einstellungen */
+details summary{cursor:pointer;font-family:var(--font-display);font-weight:700;font-size:18px}
+details[open] summary{margin-bottom:12px}
+label{font-weight:600;font-size:14px;display:flex;flex-direction:column;gap:4px}
+.field{font:inherit;font-weight:400;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%}
+.dict{display:flex;flex-direction:column;gap:10px}
+.dict .d{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:start}
+@media (max-width:420px){.dict .d{grid-template-columns:1fr}}
+.ai{white-space:pre-wrap;font-size:15px;background:var(--bg);border-radius:12px;padding:14px}
+.note{font-size:13px;color:var(--muted);border-left:3px solid var(--line);padding-left:10px}
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="tag">MVP · Kommunikations-Coach</span>
+    <h1>Pino-Coach</h1>
+    <p class="muted">Starte eine Session beim Gassi oder Training. Die App hört auf „<span class="dogname">Pino</span>“, wertet deine Kommandos aus und sagt dir, was du verbessern kannst.</p>
+  </header>
+
+  <!-- Aufnahme -->
+  <section class="card" aria-labelledby="h-rec">
+    <h2 id="h-rec">Session</h2>
+    <div class="rec">
+      <button id="recBtn" class="recbtn" type="button" aria-pressed="false">Session<br>starten</button>
+      <div class="status">
+        <strong id="recState">Bereit</strong>
+        <span id="recHint" class="muted small">Tippe auf Start und sprich ganz normal mit <span class="dogname">Pino</span>.</span>
+        <div id="partial" class="partial" aria-live="polite"></div>
+      </div>
+    </div>
+    <form id="typeForm" class="typein" autocomplete="off">
+      <input id="typeInput" type="text" placeholder="Oder Satz eintippen, z. B. „Pino, sitz!“" aria-label="Satz eintippen">
+      <button type="submit">Hinzufügen</button>
+    </form>
+    <div class="row">
+      <button id="demoBtn" type="button">Beispiel-Session laden</button>
+      <button id="resetBtn" type="button">Neue Session</button>
+    </div>
+    <p id="micNote" class="note hidden"></p>
+  </section>
+
+  <!-- Reaktion des Hundes -->
+  <section id="reactCard" class="card react hidden" aria-live="polite">
+    <h3 id="reactQ">Hat Pino reagiert?</h3>
+    <div class="row">
+      <button id="reactYes" class="yes" type="button">✓ Ja</button>
+      <button id="reactNo" class="no" type="button">✗ Nein</button>
+    </div>
+  </section>
+
+  <!-- Auswertung -->
+  <section class="card" aria-labelledby="h-res">
+    <div class="row" style="justify-content:space-between">
+      <h2 id="h-res">Auswertung</h2>
+      <span id="sessionLabel" class="pill p-warn">Beispieldaten</span>
+    </div>
+    <div class="score">
+      <div class="ring" aria-hidden="true">
+        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="var(--line)" stroke-width="10"/><circle id="ringArc" cx="50" cy="50" r="42" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="263.9" stroke-dashoffset="263.9"/></svg>
+        <b id="scoreNum">–</b>
+      </div>
+      <div class="status">
+        <strong id="scoreTitle">Kommunikations-Score</strong>
+        <span id="scoreText" class="muted small"></span>
+      </div>
+    </div>
+    <div id="stats" class="stats"></div>
+  </section>
+
+  <!-- Coaching -->
+  <section class="card" aria-labelledby="h-coach">
+    <h2 id="h-coach">Deine Verbesserungsvorschläge</h2>
+    <ul id="tips" class="tips"></ul>
+    <div id="aiBox" class="hidden" style="display:flex;flex-direction:column;gap:10px">
+      <button id="aiBtn" type="button">Ausführliches Coaching von Claude</button>
+      <div id="aiOut" class="ai hidden" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- Protokoll -->
+  <section class="card" aria-labelledby="h-log">
+    <h2 id="h-log">Erkannte Momente</h2>
+    <p class="muted small">Gespeichert werden nur Sätze mit dem Namen oder einem Kommando. Alles andere wird sofort verworfen.</p>
+    <ul id="log" class="log"></ul>
+  </section>
+
+  <!-- Einstellungen -->
+  <section class="card">
+    <details id="settings">
+      <summary>Einstellungen &amp; Kommando-Wörterbuch</summary>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <label for="dogName">Name deines Hundes
+          <input id="dogName" class="field" type="text" value="Pino">
+        </label>
+        <label for="nameVariants">Hörvarianten (falls die Spracherkennung den Namen anders schreibt)
+          <input id="nameVariants" class="field" type="text" value="bino, pinot, pinno, pina">
+        </label>
+        <div>
+          <h3>Kommando-Wörterbuch</h3>
+          <p class="muted small">Links das Wort, das alle im Haushalt nutzen sollen. Rechts Varianten, die die App als Abweichung erkennt.</p>
+        </div>
+        <div id="dict" class="dict"></div>
+        <label for="praiseWords">Lob-Wörter
+          <input id="praiseWords" class="field" type="text">
+        </label>
+        <label for="scoldWords">Tadel-Wörter
+          <input id="scoldWords" class="field" type="text">
+        </label>
+        <div class="row"><button id="saveSettings" class="primary" type="button">Übernehmen &amp; neu auswerten</button></div>
+        <p class="note">Hinweis zum Datenschutz: Für die Spracherkennung nutzt dieser Prototyp die Spracherkennung von Android (meist von Google). Je nach Gerät kann das Audio dabei vom Anbieter verarbeitet werden. Die App selbst speichert keine Aufnahmen, nur die erkannten Sätze mit Namen oder Kommando, und zwar nur auf diesem Gerät.</p>
+      </div>
+    </details>
+  </section>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  // ---------- Grundeinstellungen ----------
+  const DEFAULTS = {
+    dogName: "Pino",
+    nameVariants: ["bino","pinot","pinno","pina"],
+    actions: [
+      { id:"sitz",  preferred:"Sitz",  variants:["setz dich","hinsetzen","sitzen","sitz"] },
+      { id:"platz", preferred:"Platz", variants:["leg dich","hinlegen","platz machen","platz"] },
+      { id:"hier",  preferred:"Hier",  variants:["komm her","komm mal","komm","herkommen","zu mir","hierher","hier"] },
+      { id:"bleib", preferred:"Bleib", variants:["warte","stay","bleib"] },
+      { id:"fuss",  preferred:"Fuß",   variants:["bei fuß","bei fuss","fuss","fuß"] },
+      { id:"aus",   preferred:"Aus",   variants:["gib her","lass los","loslassen","gib","aus"] }
+    ],
+    praise: ["gut gemacht","guter junge","feiner","fein","super","brav","toll","prima","klasse","jawohl","sehr gut","gut so"],
+    scold: ["nein","pfui","lass das","hör auf","böse","nicht"]
+  };
+  const REP_WINDOW = 10000;    // gleiches Kommando innerhalb 10 s = Wiederholung
+  const FOLLOW_WINDOW = 4000;  // nach dem Namen 4 s auf ein Kommando warten
+  const SPAM_WINDOW = 10000;   // Name 3x in 10 s = Namens-Dauerschleife
+
+  let cfg = load("pinocoach.cfg") || clone(DEFAULTS);
+  let utterances = [];         // {t, text}
+  let reactions = {};          // key: utterance index -> true/false
+  let isDemo = true;
+  let pendingReact = null;
+  let startedAt = Date.now();
+
+  // ---------- Hilfsfunktionen ----------
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function load(k){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch(e){ return null; } }
+  function save(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+  function norm(s){ return (" " + s.toLowerCase().replace(/ß/g,"ss").replace(/[^a-zäöü0-9\s]/g," ").replace(/\s+/g," ").trim() + " "); }
+  function esc(s){ return s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+  function fmtT(ms){ const s = Math.max(0, Math.round(ms/1000)); return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0"); }
+  function $(id){ return document.getElementById(id); }
+
+  // Findet Wörter/Phrasen als ganze Wörter; längere zuerst, Treffer werden "verbraucht"
+  function findAll(text, phrases){
+    let t = norm(text); const hits = [];
+    const sorted = phrases.map(p => ({p, n: norm(p).trim()})).filter(x => x.n).sort((a,b) => b.n.length - a.n.length);
+    for (const {p, n} of sorted){
+      let idx;
+      while ((idx = t.indexOf(" " + n + " ")) !== -1){
+        hits.push({ phrase:p, pos:idx });
+        t = t.slice(0, idx + 1) + "#".repeat(n.length) + t.slice(idx + 1 + n.length);
+      }
+    }
+    return hits.sort((a,b) => a.pos - b.pos);
+  }
+
+  // ---------- Analyse (reine Funktion) ----------
+  function analyze(utts, cfg, reactions){
+    const names = [cfg.dogName, ...cfg.nameVariants];
+    const actionPhrases = [];
+    cfg.actions.forEach(a => {
+      const all = new Set([a.preferred, ...a.variants]);
+      all.forEach(v => actionPhrases.push({ v, a }));
+    });
+    const items = utts.map((u, i) => {
+      const nameHits = findAll(u.text, names);
+      const cmdHits = findAll(u.text, actionPhrases.map(x => x.v)).map(h => {
+        const ap = actionPhrases.find(x => norm(x.v).trim() === norm(h.phrase).trim());
+        return { action: ap.a, word: h.phrase, preferred: norm(h.phrase).trim() === norm(ap.a.preferred).trim() };
+      });
+      const praise = findAll(u.text, cfg.praise).length;
+      const scold = findAll(u.text, cfg.scold).length;
+      return { i, t:u.t, text:u.text, names:nameHits.length, cmds:cmdHits, praise, scold, reps:0 };
+    });
+
+    // Kommandos einzeln mit Zeit
+    const cmdEvents = [];
+    items.forEach(it => it.cmds.forEach(c => cmdEvents.push({ it, c, t: it.t })));
+    let repetitions = 0; const chains = {}; let longestChain = { len:0, word:"" };
+    const lastByAction = {};
+    cmdEvents.forEach(ev => {
+      const id = ev.c.action.id;
+      const last = lastByAction[id];
+      if (last && ev.t - last.t <= REP_WINDOW){
+        repetitions++; ev.it.reps++;
+        last.chain.len++; ev.chain = last.chain;
+      } else {
+        ev.chain = { len:1, word: ev.c.action.preferred };
+      }
+      if (ev.chain.len > longestChain.len) longestChain = ev.chain;
+      lastByAction[id] = ev;
+    });
+
+    // Name ohne Folge
+    let nameEvents = 0, nameOnly = 0;
+    items.forEach((it, k) => {
+      if (!it.names) return;
+      nameEvents += it.names;
+      let followed = it.cmds.length || it.praise || it.scold;
+      for (let j = k + 1; !followed && j < items.length && items[j].t - it.t <= FOLLOW_WINDOW; j++){
+        if (items[j].cmds.length || items[j].praise || items[j].scold) followed = true;
+      }
+      if (!followed) { nameOnly += 1; it.nameOnly = true; }
+      // mehrfacher Name im selben Satz ohne Kommando zählt extra
+      if (it.names > 1 && !it.cmds.length) nameOnly += it.names - 1;
+    });
+    // Namens-Dauerschleife
+    let spamBursts = 0; const nameTimes = [];
+    items.forEach(it => { for (let n = 0; n < it.names; n++) nameTimes.push(it.t); });
+    for (let k = 0; k + 2 < nameTimes.length; k++){
+      if (nameTimes[k+2] - nameTimes[k] <= SPAM_WINDOW){ spamBursts++; k += 2; }
+    }
+
+    // Uneinheitliche Wörter
+    const perAction = {};
+    let nonPreferred = 0;
+    cmdEvents.forEach(ev => {
+      const id = ev.c.action.id;
+      perAction[id] = perAction[id] || { action: ev.c.action, words:{}, total:0 };
+      const w = ev.c.word.toLowerCase();
+      perAction[id].words[w] = (perAction[id].words[w] || 0) + 1;
+      perAction[id].total++;
+      if (!ev.c.preferred) nonPreferred++;
+    });
+    const praise = items.reduce((s,it) => s + it.praise, 0);
+    const scold = items.reduce((s,it) => s + it.scold, 0);
+
+    // Reaktionen
+    const rv = Object.values(reactions);
+    const reacted = rv.filter(Boolean).length;
+
+    const commands = cmdEvents.length;
+    const uniqueCommands = commands - repetitions;
+    const nameOnlyRate = nameEvents ? nameOnly / nameEvents : 0;
+    const repRate = commands ? repetitions / commands : 0;
+    const synRate = commands ? nonPreferred / commands : 0;
+    const respRate = rv.length ? reacted / rv.length : null;
+
+    let score = 100;
+    score -= nameOnlyRate * 25;
+    score -= repRate * 35;
+    score -= synRate * 20;
+    if (scold > praise) score -= Math.min(15, (scold - praise) / Math.max(1, scold + praise) * 30);
+    if (respRate !== null && rv.length >= 3) score -= (1 - respRate) * 10;
+    if (!commands && !nameEvents) score = null;
+    else score = Math.max(0, Math.min(100, Math.round(score)));
+
+    return { items, commands, uniqueCommands, repetitions, longestChain, nameEvents, nameOnly, nameOnlyRate,
+             spamBursts, perAction, nonPreferred, synRate, repRate, praise, scold, reactions: rv.length, reacted, respRate, score };
+  }
+
+  // ---------- Coaching-Regeln ----------
+  function coach(r, cfg){
+    const N = cfg.dogName, tips = [];
+    if (r.score === null) return tips;
+    if (r.repetitions > 0){
+      tips.push({ sev: r.repRate, level: r.repRate > .3 ? "bad" : "warn", label:"Kommando-Wiederholung",
+        title:`Du hast ${r.repetitions}× ein Kommando wiederholt`,
+        why:`Längste Kette: „${r.longestChain.word}“ ${r.longestChain.len}× hintereinander. ${N} lernt so, dass erst das letzte Mal zählt.`,
+        ex:`<b>Ein-Mal-Regel:</b> Sag das Kommando einmal, ruhig und deutlich. Reagiert ${N} nicht innerhalb von 3 Sekunden, hilf ihm körpersprachlich oder mit Leckerli, statt zu wiederholen. Übe täglich 5 Minuten in reizarmer Umgebung.` });
+    }
+    if (r.nameOnly > 0){
+      tips.push({ sev: r.nameOnlyRate, level: r.nameOnlyRate > .35 ? "bad" : "warn", label:"Name ohne Folge",
+        title:`${r.nameOnly}× fiel „${N}“ ohne Kommando oder Lob`,
+        why:`Wenn auf den Namen nichts folgt, wird er zum Hintergrundrauschen. ${r.spamBursts ? `Dazu ${r.spamBursts}× eine Namens-Dauerschleife (3× in 10 Sekunden).` : ""}`,
+        ex:`<b>Namen aufladen:</b> Sag ${r.spamBursts ? "" : "täglich "}10× „${N}“, und jedes Mal, wenn er dich anschaut, gibt es sofort ein Leckerli. Im Alltag gilt: Name nur, wenn danach etwas für ihn passiert.` });
+    }
+    const mixed = Object.values(r.perAction).filter(p => Object.keys(p.words).length > 1 || !p.words[p.action.preferred.toLowerCase()]);
+    if (mixed.length){
+      const p = mixed.sort((a,b) => b.total - a.total)[0];
+      const list = Object.entries(p.words).map(([w,c]) => `„${w}“ ${c}×`).join(", ");
+      tips.push({ sev: r.synRate + .05, level: r.synRate > .3 ? "bad" : "warn", label:"Uneinheitliche Wörter",
+        title:`Für „${p.action.preferred}“ nutzt du mehrere Wörter`,
+        why:`Gehört: ${list}. Für ${N} sind das verschiedene Signale.`,
+        ex:`<b>Ein Wort pro Handlung:</b> Einigt euch im Haushalt auf „${p.action.preferred}“ und hängt das Wörterbuch an den Kühlschrank. Alle anderen Varianten streichen.` });
+    }
+    if (r.scold > r.praise){
+      tips.push({ sev: .25 + (r.scold - r.praise) / Math.max(1, r.scold + r.praise) * .5, level:"warn", label:"Mehr Tadel als Lob",
+        title:`${r.scold}× Tadel, aber nur ${r.praise}× Lob`,
+        why:`Hunde lernen schneller über das, was sich lohnt, als über das, was verboten ist.`,
+        ex:`<b>Lob-Quote drehen:</b> Erwische ${N} beim Richtigmachen und lobe innerhalb von 2 Sekunden. Ziel für die nächste Session: mindestens 3× Lob auf 1× Tadel.` });
+    } else if (r.praise === 0 && r.commands > 0){
+      tips.push({ sev: .2, level:"warn", label:"Kein Lob erkannt",
+        title:`In dieser Session fiel kein Lob`,
+        why:`Ohne Rückmeldung weiß ${N} nicht, ob er es richtig gemacht hat.`,
+        ex:`<b>Markerwort einführen:</b> Wähle ein festes Lobwort wie „Fein“ und sag es sofort, wenn ${N} das Kommando ausführt.` });
+    }
+    if (r.respRate !== null && r.reactions >= 3 && r.respRate < .7){
+      tips.push({ sev: (1 - r.respRate) * .6, level:"warn", label:"Reaktionsquote",
+        title:`${N} hat auf ${Math.round(r.respRate*100)} % der Kommandos reagiert`,
+        why:`Eine niedrige Quote heißt meist: zu viel Ablenkung oder das Kommando sitzt noch nicht.`,
+        ex:`<b>Schwierigkeit senken:</b> Übe das Kommando erst zu Hause, dann im Garten, erst danach auf der Gassirunde.` });
+    }
+    tips.sort((a,b) => b.sev - a.sev);
+    if (!tips.length){
+      tips.push({ sev:0, level:"good", label:"Stark", title:"Saubere Kommunikation", why:`Kaum Wiederholungen, einheitliche Wörter, genug Lob.`, ex:`<b>Nächste Stufe:</b> Steigere die Ablenkung, zum Beispiel dieselben Kommandos im Park oder in der Nähe anderer Hunde.` });
+    }
+    return tips;
+  }
+
+  // ---------- Darstellung ----------
+  function render(){
+    const r = analyze(utterances, cfg, reactions);
+    document.querySelectorAll(".dogname").forEach(e => e.textContent = cfg.dogName);
+    $("sessionLabel").textContent = isDemo ? "Beispieldaten" : (utterances.length ? "Deine Session" : "Noch leer");
+    $("sessionLabel").className = "pill " + (isDemo ? "p-warn" : "p-good");
+
+    // Score
+    const arc = $("ringArc");
+    if (r.score === null){
+      $("scoreNum").textContent = "–"; arc.style.strokeDashoffset = 263.9;
+      $("scoreText").textContent = `Noch keine Daten. Starte eine Session und sprich mit ${cfg.dogName}.`;
+    } else {
+      $("scoreNum").textContent = r.score;
+      arc.style.strokeDashoffset = 263.9 * (1 - r.score / 100);
+      arc.style.stroke = r.score >= 75 ? "var(--good)" : r.score >= 50 ? "var(--warn)" : "var(--bad)";
+      $("scoreText").textContent = r.score >= 75 ? "Klare Signale. Weiter so." : r.score >= 50 ? "Solide Basis, mit ein paar Störgeräuschen." : `Viel Rauschen. ${cfg.dogName} muss raten, was du willst.`;
+    }
+
+    // Kennzahlen
+    const cls = (bad, warn) => bad ? "s-bad" : warn ? "s-warn" : "s-good";
+    const stats = [
+      { v: r.nameEvents, l: `× „${cfg.dogName}“ gerufen`, c: "s-neutral" },
+      { v: r.nameOnly, l: "davon ohne Kommando oder Lob", c: cls(r.nameOnlyRate > .35, r.nameOnly > 0) },
+      { v: r.uniqueCommands, l: "Kommandos gegeben", c: "s-neutral" },
+      { v: r.repetitions, l: "Kommandos wiederholt", c: cls(r.repRate > .3, r.repetitions > 0) },
+      { v: `${r.praise} : ${r.scold}`, l: "Lob zu Tadel", c: cls(r.scold > r.praise * 2, r.scold > r.praise) },
+      { v: r.respRate === null ? "–" : Math.round(r.respRate * 100) + " %", l: r.reactions ? `Reaktion (${r.reacted} von ${r.reactions})` : "Reaktion (antippen nach Kommando)", c: r.respRate === null ? "s-neutral" : cls(r.respRate < .5, r.respRate < .75) }
+    ];
+    $("stats").innerHTML = stats.map(s => `<div class="stat ${s.c}"><span class="v">${s.v}</span><span class="l">${esc(s.l)}</span></div>`).join("");
+
+    // Tipps
+    const tips = coach(r, cfg);
+    $("tips").innerHTML = tips.length ? tips.map((t, k) => `
+      <li class="tip ${k === 0 && t.level !== "good" ? "focus" : ""}">
+        <span class="pill ${k === 0 && t.level !== "good" ? "p-focus" : "p-" + t.level}">${k === 0 && t.level !== "good" ? "Fokus diese Woche · " : ""}${esc(t.label)}</span>
+        <h3>${esc(t.title)}</h3>
+        <p class="muted small">${esc(t.why)}</p>
+        <p class="ex">${t.ex}</p>
+      </li>`).join("") : `<li class="muted">Sobald Daten da sind, erscheinen hier deine Vorschläge.</li>`;
+
+    // Protokoll
+    const names = [cfg.dogName, ...cfg.nameVariants];
+    $("log").innerHTML = r.items.slice().reverse().map(it => {
+      const chips = [];
+      if (it.names) chips.push(`<span class="chip c-name">Name</span>`);
+      if (it.nameOnly) chips.push(`<span class="chip c-rep">ohne Folge</span>`);
+      it.cmds.forEach(c => chips.push(`<span class="chip ${c.preferred ? "c-cmd" : "c-syn"}">${esc(c.action.preferred)}${c.preferred ? "" : " ≠ " + esc(c.word)}</span>`));
+      if (it.reps) chips.push(`<span class="chip c-rep">${it.reps}× wiederholt</span>`);
+      if (it.praise) chips.push(`<span class="chip c-praise">Lob</span>`);
+      if (it.scold) chips.push(`<span class="chip c-scold">Tadel</span>`);
+      if (reactions[it.i] !== undefined) chips.push(`<span class="chip ${reactions[it.i] ? "c-praise" : "c-rep"}">${reactions[it.i] ? "✓ reagiert" : "✗ keine Reaktion"}</span>`);
+      let txt = esc(it.text);
+      names.forEach(n => { if (n) txt = txt.replace(new RegExp("\\b(" + n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + ")\\b","gi"), "<mark>$1</mark>"); });
+      return `<li><time>${fmtT(it.t)}</time><span class="txt">${txt} ${chips.join("")}</span></li>`;
+    }).join("") || `<li class="muted">Noch nichts erkannt.</li>`;
+
+    if (!isDemo) save("pinocoach.session", { utterances, reactions });
+    return r;
+  }
+
+  // ---------- Eingang neuer Sätze ----------
+  function addUtterance(text, t){
+    text = (text || "").trim();
+    if (!text) return;
+    if (isDemo){ isDemo = false; utterances = []; reactions = {}; startedAt = Date.now(); t = 0; }
+    const time = t !== undefined ? t : Date.now() - startedAt;
+    // Nur relevante Sätze behalten
+    const names = [cfg.dogName, ...cfg.nameVariants];
+    const relevant = findAll(text, names).length || findAll(text, cfg.actions.flatMap(a => [a.preferred, ...a.variants])).length
+      || findAll(text, cfg.praise).length || findAll(text, cfg.scold).length;
+    if (!relevant) return;
+    utterances.push({ t: time, text });
+    const idx = utterances.length - 1;
+    const cmds = findAll(text, cfg.actions.flatMap(a => [a.preferred, ...a.variants]));
+    render();
+    if (cmds.length) askReaction(idx, cmds[cmds.length - 1].phrase);
+  }
+
+  function askReaction(idx, word){
+    pendingReact = idx;
+    $("reactQ").textContent = `„${word}“: Hat ${cfg.dogName} reagiert?`;
+    $("reactCard").classList.remove("hidden");
+  }
+  function answerReaction(val){
+    if (pendingReact === null) return;
+    reactions[pendingReact] = val; pendingReact = null;
+    $("reactCard").classList.add("hidden");
+    render();
+  }
+  $("reactYes").addEventListener("click", () => answerReaction(true));
+  $("reactNo").addEventListener("click", () => answerReaction(false));
+
+  $("typeForm").addEventListener("submit", e => {
+    e.preventDefault();
+    addUtterance($("typeInput").value);
+    $("typeInput").value = "";
+  });
+
+  // ---------- Demo ----------
+  const DEMO = [
+    [2,"Pino!"],[6,"Pino, komm!"],[9,"Komm her!"],[12,"Pino, hier!"],[15,"Fein, guter Junge"],
+    [40,"Pino"],[44,"Pino!"],[47,"Pino, nein!"],[70,"Sitz"],[73,"Sitz!"],[76,"Pino, SITZ!"],[80,"Brav"],
+    [120,"Pino, bleib"],[124,"Warte!"],[160,"Nein, pfui!"],[190,"Pino!"],[220,"Platz"],[226,"Fein"],
+    [260,"Pino, hier"],[290,"Pino, komm mal"],[293,"Komm!"],[330,"Aus! Aus!"],[336,"Nein!"]
+  ];
+  function loadDemo(){
+    isDemo = true; pendingReact = null; $("reactCard").classList.add("hidden");
+    utterances = DEMO.map(([s, text]) => ({ t: s * 1000, text }));
+    reactions = { 1:false, 3:true, 10:true, 12:false, 16:true, 19:false, 20:true };
+    render();
+  }
+  $("demoBtn").addEventListener("click", loadDemo);
+  $("resetBtn").addEventListener("click", () => {
+    isDemo = false; utterances = []; reactions = {}; pendingReact = null; startedAt = Date.now();
+    $("reactCard").classList.add("hidden");
+    save("pinocoach.session", { utterances, reactions });
+    render();
+  });
+
+  // ---------- Einstellungen ----------
+  function fillSettings(){
+    $("dogName").value = cfg.dogName;
+    $("nameVariants").value = cfg.nameVariants.join(", ");
+    $("praiseWords").value = cfg.praise.join(", ");
+    $("scoldWords").value = cfg.scold.join(", ");
+    $("dict").innerHTML = cfg.actions.map((a, k) => `
+      <div class="d">
+        <input class="field" id="pref-${k}" aria-label="Bevorzugtes Wort" value="${esc(a.preferred)}">
+        <input class="field" id="var-${k}" aria-label="Varianten für ${esc(a.preferred)}" value="${esc(a.variants.filter(v => v.toLowerCase() !== a.preferred.toLowerCase()).join(", "))}">
+      </div>`).join("");
+  }
+  const split = s => s.split(",").map(x => x.trim()).filter(Boolean);
+  $("saveSettings").addEventListener("click", () => {
+    cfg.dogName = $("dogName").value.trim() || "Pino";
+    cfg.nameVariants = split($("nameVariants").value);
+    cfg.praise = split($("praiseWords").value);
+    cfg.scold = split($("scoldWords").value);
+    cfg.actions = cfg.actions.map((a, k) => ({ id:a.id, preferred: $("pref-"+k).value.trim() || a.preferred, variants: split($("var-"+k).value) }));
+    save("pinocoach.cfg", cfg);
+    render();
+    $("settings").open = false;
+  });
+
+  // ---------- Spracherkennung (native Android-App) ----------
+  const Cap = window.Capacitor;
+  const SR = Cap && Cap.Plugins ? Cap.Plugins.SpeechRecognition : null;
+  const KA = Cap && Cap.Plugins ? Cap.Plugins.KeepAwake : null;
+  let listening = false, loopId = 0;
+  const recBtn = $("recBtn");
+  function setRecUI(on, stateText, hint){
+    listening = on;
+    recBtn.classList.toggle("live", on);
+    recBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    recBtn.innerHTML = on ? "Session<br>beenden" : "Session<br>starten";
+    $("recState").textContent = stateText;
+    if (hint !== undefined) $("recHint").textContent = hint;
+  }
+  function micUnavailable(msg){
+    recBtn.disabled = true;
+    $("recState").textContent = "Spracherkennung nicht verfügbar";
+    $("recHint").textContent = "Tipp Sätze unten ein oder lade die Beispiel-Session.";
+    const n = $("micNote"); n.textContent = msg; n.classList.remove("hidden");
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  async function listenLoop(id){
+    let errors = 0;
+    while (listening && id === loopId){
+      try {
+        $("partial").textContent = "hört zu …";
+        const res = await SR.start({ language: "de-DE", maxResults: 1, partialResults: false, popup: false });
+        if (!listening || id !== loopId) break;
+        const text = res && res.matches && res.matches[0];
+        if (text){ $("partial").textContent = ""; addUtterance(text); }
+        errors = 0;
+      } catch(e){
+        const m = String((e && e.message) || e || "");
+        if (/permission/i.test(m)){ setRecUI(false, "Mikrofon nicht erlaubt", "Erlaube das Mikrofon in den Android-Einstellungen für Pino-Coach."); break; }
+        errors++;
+        // "No match" / Timeout bei Stille: einfach neu starten
+        await sleep(errors > 5 ? 1500 : 250);
+      }
+    }
+    $("partial").textContent = "";
+  }
+
+  async function startSession(){
+    try {
+      let perm = await SR.checkPermissions();
+      if (perm.speechRecognition !== "granted") perm = await SR.requestPermissions();
+      if (perm.speechRecognition !== "granted"){
+        setRecUI(false, "Mikrofon nicht erlaubt", "Ohne Mikrofon kann die App nicht zuhören. Du kannst es in den Android-Einstellungen erlauben.");
+        return;
+      }
+    } catch(e){}
+    if (isDemo){ isDemo = false; utterances = []; reactions = {}; render(); }
+    if (!utterances.length) startedAt = Date.now();
+    setRecUI(true, "Hört zu …", `Sprich ganz normal mit ${cfg.dogName}. Der Bildschirm bleibt an.`);
+    try { if (KA) await KA.keepAwake(); } catch(e){}
+    loopId++; listenLoop(loopId);
+  }
+  async function stopSession(msg){
+    loopId++;
+    setRecUI(false, msg || "Session beendet", "Unten siehst du deine Auswertung.");
+    try { await SR.stop(); } catch(e){}
+    try { if (KA) await KA.allowSleep(); } catch(e){}
+  }
+
+  recBtn.addEventListener("click", () => { if (!SR) return; listening ? stopSession() : startSession(); });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && listening) stopSession("Pausiert, weil die App im Hintergrund war");
+  });
+
+  (async () => {
+    if (!SR){ micUnavailable("Die Spracherkennung funktioniert nur in der installierten Android-App."); return; }
+    try {
+      const a = await SR.available();
+      if (!a.available) micUnavailable("Auf diesem Gerät ist keine Spracherkennung installiert. Installiere oder aktiviere die Google-App bzw. „Speech Services by Google“.");
+    } catch(e){}
+  })();
+
+  // ---------- Claude-Coaching ----------
+  (async () => {
+    let sample = null;
+    try { sample = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch(e){ sample = null; }
+    if (!sample) return;
+    $("aiBox").classList.remove("hidden");
+    let ctrl = null;
+    $("aiBtn").addEventListener("click", async () => {
+      const r = analyze(utterances, cfg, reactions);
+      if (r.score === null){ $("aiOut").textContent = "Erst eine Session aufnehmen, dann kann ich dich coachen."; $("aiOut").classList.remove("hidden"); return; }
+      if (ctrl) ctrl.abort();
+      ctrl = new AbortController();
+      $("aiBtn").disabled = true;
+      $("aiOut").classList.remove("hidden");
+      $("aiOut").textContent = "Claude denkt nach …";
+      const data = {
+        hund: cfg.dogName, score: r.score, name_gerufen: r.nameEvents, name_ohne_folge: r.nameOnly, namens_dauerschleifen: r.spamBursts,
+        kommandos: r.uniqueCommands, wiederholungen: r.repetitions, laengste_kette: r.longestChain,
+        woerter_pro_kommando: Object.fromEntries(Object.values(r.perAction).map(p => [p.action.preferred, p.words])),
+        lob: r.praise, tadel: r.scold, reaktion: r.respRate === null ? null : Math.round(r.respRate*100) + "%",
+        saetze: r.items.map(it => `${fmtT(it.t)} ${it.text}`).slice(-40)
+      };
+      const prompt = `Du bist eine erfahrene, freundliche Hundetrainerin mit Fokus auf positiver Verstärkung. Du coachst den Halter, nicht den Hund. Analysiere die folgende Gassi-Session (nur die Sätze des Menschen an den Hund) und gib auf Deutsch, in Du-Form, ohne Markdown-Überschriften:
+1) Eine Zeile Gesamteindruck.
+2) Die drei wichtigsten Muster, jeweils mit einem konkreten Zitat aus den Sätzen.
+3) Eine einzige Übung für diese Woche, Schritt für Schritt, maximal 5 Schritte.
+Maximal 180 Wörter. Keine medizinischen Aussagen.
+
+Daten:
+${JSON.stringify(data, null, 1)}`;
+      try {
+        const res = await sample(prompt, { signal: ctrl.signal, onText: ({ text }) => { $("aiOut").textContent = text; } });
+        $("aiOut").textContent = res.text;
+      } catch(err){
+        const code = err && err.code;
+        if (code === "not_granted"){ $("aiBox").classList.add("hidden"); }
+        else if (code === "rate_limited"){ $("aiOut").textContent = "Gerade zu viele Anfragen. Versuch es in ein paar Minuten noch einmal."; }
+        else if (err && err.name !== "AbortError"){ $("aiOut").textContent = "Das Coaching konnte nicht geladen werden. Versuch es noch einmal."; }
+      } finally { $("aiBtn").disabled = false; }
+    });
+  })();
+
+  // ---------- Start ----------
+  fillSettings();
+  const saved = load("pinocoach.session");
+  if (saved && saved.utterances && saved.utterances.length){
+    utterances = saved.utterances; reactions = saved.reactions || {}; isDemo = false;
+    startedAt = Date.now() - (utterances[utterances.length - 1].t + 60000);
+    render();
+  } else {
+    loadDemo();
+  }
+
+  // Für Tests
+  window.__pino = { analyze, coach, DEMO, DEFAULTS };
+})();
+</script>
+</body>
+</html>
